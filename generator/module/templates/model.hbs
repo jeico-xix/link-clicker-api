@@ -1,0 +1,203 @@
+// store
+const knex = require('@config/knex')
+const redis = require('@config/redis')
+
+// utilities
+const { makeQuery } = require('@utilities/knex-helper')
+
+// libs
+const _isEmpty = require('lodash/isEmpty')
+const _isNil = require('lodash/isNil')
+const _castArray = require('lodash/castArray')
+const _pickBy = require('lodash/pickBy')
+
+// helpers
+
+module.exports = {
+  async list ({ filterBy, q, page, rows, sortBy, sort, isCount, dateBy, dateFrom, dateTo } = {}) {
+    /**
+     * Change necessarily and remove this comment
+     */
+    const filterDictionary = {}
+
+    /**
+     * Change necessarily and remove this comment
+     */
+    const sortDictionary = {
+      login_id: '{{ pluralSnakeCase name }}.login_id',
+      login_name: '{{ pluralSnakeCase name }}.login_name',
+      amount: '{{ pluralSnakeCase name }}.amount'
+    }
+
+    /**
+     * Change necessarily and remove this comment
+     */
+    const dateDictionary = {
+      created_at: '{{ pluralSnakeCase name }}.created_at'
+    }
+
+    try {
+      /**
+       * Change necessarily and remove this comment
+       */
+      const query = knex('{{ pluralSnakeCase name }}')
+        .modify(knex => {
+          makeQuery({
+            ...{ filterBy, q, filterDictionary },
+            ...{ sortBy, sort, sortDictionary },
+            ...{ dateBy, dateFrom, dateTo, dateDictionary },
+            ...{ page, rows },
+            knex,
+            isCount
+          })
+
+          if (isCount) {
+            /**
+             * Change necessarily and remove this comment
+             */
+            knex
+              .count({ total: '{{ pluralSnakeCase name }}.id' })
+              .first()
+          } else {
+            /**
+             * Change necessarily and remove this comment
+             */
+            knex.select({
+              id: '{{ pluralSnakeCase name }}.id',
+              login_id: '{{ pluralSnakeCase name }}.login_id',
+              login_name: '{{ pluralSnakeCase name }}.login_name',
+              amount: '{{ pluralSnakeCase name }}.amount',
+              created_at: '{{ pluralSnakeCase name }}.created_at'
+            })
+          }
+        })
+
+      const list = await query
+
+      if (isCount) {
+        return list
+      }
+
+      return list
+    } catch (error) {
+      console.log(error)
+      throw error
+    }
+  },
+
+  async find (conditions) {
+    /**
+     * Change necessarily and remove this comment
+     */
+    const dictionary = {
+      id: '{{ pluralSnakeCase name }}.id',
+      type_id: '{{ pluralSnakeCase name }}.type_id',
+      name: '{{ pluralSnakeCase name }}.name',
+      table: '{{ pluralSnakeCase name }}.table'
+    }
+
+    try {
+      const data = await knex('{{ pluralSnakeCase name }}')
+        .modify(knex => {
+          if (_isEmpty(conditions)) {
+            knex.whereRaw('1 = 0')
+          }
+
+          for (const key in conditions) {
+            const curr = conditions[key]
+
+            if (dictionary[key] && !_isNil(curr)) {
+              knex.where(dictionary[key], curr)
+            }
+          }
+
+          /**
+           * Change necessarily and remove this comment
+           */
+          if (conditions.is_deleted) {
+            knex.whereNotNull('{{ pluralSnakeCase name }}.deleted_at')
+          } else {
+            knex.whereNull('{{ pluralSnakeCase name }}.deleted_at')
+          }
+        })
+        /**
+         * Change necessarily and remove this comment
+         */
+        .select({
+          id: '{{ pluralSnakeCase name }}.id',
+          type_id: '{{ pluralSnakeCase name }}.type_id',
+          name: '{{ pluralSnakeCase name }}.name',
+          table: '{{ pluralSnakeCase name }}.table'
+        })
+        .first()
+
+      return data
+    } catch (error) {
+      console.log(error)
+      throw error
+    }
+  },
+
+  async store (payload) {
+    /**
+     * Change necessarily and remove this comment
+     */
+    const fillables = new Set([
+      'foo',
+      'bar'
+    ])
+
+    try {
+      const arrayPayload = _castArray(payload)
+      const filterer = hay => _pickBy(hay, (val, key) => !_isNil(val) && fillables.has(key))
+      const data = arrayPayload.map(filterer)
+
+      /**
+       * Change necessarily and remove this comment
+       */
+      const [id] = await knex('{{ pluralSnakeCase name }}').insert(data)
+
+      return id
+    } catch (error) {
+      console.log(error)
+      throw error
+    }
+  },
+
+  async modify (id, payload) {
+    try {
+      /**
+       * Change necessarily and remove this comment
+       */
+      const dictionary = {
+        foo: '{{ pluralSnakeCase name }}.foo'
+      }
+
+      const updateData = {}
+      for (const key in payload) {
+        const updateValue = payload[key]
+        const currDictionary = dictionary[key]
+
+        if (_isNil(updateValue) || !currDictionary) {
+          continue
+        }
+
+        updateData[currDictionary] = updateValue
+      }
+
+      if (_isEmpty(updateData)) {
+        return
+      }
+
+      /**
+       * Change necessarily and remove this comment
+       */
+      await knex({ tbl: '{{ pluralSnakeCase name }}' })
+        .where('tbl.id', id)
+        .update(updateData)
+    } catch (error) {
+      console.log(error)
+      throw error
+    }
+  }
+}

@@ -1,0 +1,9 @@
+.env
+node_modules
+.idea
+.vscode
+.DS_Store
+*~
+*.log
+package-lock.json
+!logs/.gitkeep
