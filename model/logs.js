@@ -82,7 +82,7 @@ module.exports = {
         const startedAt = moment(item.started_at)
         const finishedAt = moment(item.finished_at)
         const duration = moment.duration(finishedAt.diff(startedAt))
-        item.duration = `${duration.asSeconds()} secs`
+        item.duration = (isNaN(duration.asSeconds())) ? '---' : `${duration.asSeconds()} secs`
       })
 
       return list
@@ -183,6 +183,39 @@ module.exports = {
       })
 
       return item
+    } catch (error) {
+      console.log(error)
+      throw error
+    }
+  },
+
+  async modify (id, payload) {
+    try {
+      const dictionary = {
+        status: 'status',
+        page: 'page',
+        finished_at: 'finished_at'
+      }
+
+      const updateData = {}
+      for (const key in payload) {
+        const updateValue = payload[key]
+        const currDictionary = dictionary[key]
+
+        if (_isNil(updateValue) || !currDictionary) {
+          continue
+        }
+
+        updateData[currDictionary] = updateValue
+      }
+
+      if (_isEmpty(updateData)) {
+        return
+      }
+
+      await knex({ tbl: 'logs' })
+        .where('tbl.site_tag_id', id)
+        .update(updateData)
     } catch (error) {
       console.log(error)
       throw error

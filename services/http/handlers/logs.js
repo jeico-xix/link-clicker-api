@@ -48,14 +48,7 @@ module.exports = ({ router }) => router
     const schema = Joi.object({
       site_tag_id: Joi.number()
         .required(),
-      status: Joi.string()
-        .required(),
-      page: Joi.number()
-        .allow(null)
-        .optional(),
       started_at: Joi.string()
-        .required(),
-      finished_at: Joi.string()
         .required()
     })
 
@@ -63,15 +56,39 @@ module.exports = ({ router }) => router
       const request = await schema.validateAsync(ctx.request.body)
       const inserted = await Logs.store({
         site_tag_id: request.site_tag_id,
-        status: request.status,
-        page: request.page,
-        started_at: request.started_at,
-        finished_at: request.finished_at
+        started_at: request.started_at
       })
 
       redis.emitSocketUser('logs', 'insert', inserted)
 
       ctx.status = 200
+    } catch (error) {
+      console.log(error)
+      ctx.throw(error)
+    }
+  })
+
+  .patch('/', async ctx => {
+    const schema = Joi.object({
+      site_tag_id: Joi.number()
+        .required(),
+      status: Joi.string()
+        .optional(),
+      page: Joi.number()
+        .allow(null)
+        .optional(),
+      finished_at: Joi.string()
+        .required()
+    })
+
+    try {
+      const data = await schema.validateAsync(ctx.request.body)
+
+      await Logs.modify(ctx.request.body.site_tag_id, data)
+
+      redis.emitSocketUser('logs', 'insert', {})
+
+      ctx.status = 204
     } catch (error) {
       console.log(error)
       ctx.throw(error)

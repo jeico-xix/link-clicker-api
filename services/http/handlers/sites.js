@@ -9,7 +9,6 @@ const SiteTags = require('@model/site-tags')
 
 // libraries
 const Joi = require('joi')
-const _get = require('lodash/get')
 
 // middlewares
 const authentication = require('@middleware/authentication')
@@ -38,7 +37,7 @@ module.exports = ({ router }) => router
       const list = await Sites.list({ ...params })
       const count = await Sites.list({ ...params, isCount: true })
 
-      ctx.body = { count: _get(count, 'total', 0), list }
+      ctx.body = { count, list }
     } catch (error) {
       console.log(error)
       ctx.throw(error)
@@ -120,6 +119,7 @@ module.exports = ({ router }) => router
   .delete('/:id', async ctx => {
     try {
       const id = ctx.params.id
+
       await Sites.modify(id, {
         deleted_at: new Date()
       })

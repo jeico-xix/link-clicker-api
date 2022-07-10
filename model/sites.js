@@ -6,6 +6,7 @@ const knex = require('@config/knex')
 const { makeQuery, jsonObject, raw } = require('@utilities/knex-helper')
 
 // libs
+const _get = require('lodash/get')
 const _isEmpty = require('lodash/isEmpty')
 const _isNil = require('lodash/isNil')
 const _castArray = require('lodash/castArray')
@@ -15,6 +16,30 @@ const _pickBy = require('lodash/pickBy')
 
 module.exports = {
   async list ({ filterBy, q, page, rows, sortBy, sort, isCount, dateBy, dateFrom, dateTo } = {}) {
+    // bulkUpdate('id', [
+    //   {
+    //     id: 1,
+    //     name: 'foo',
+    //     age: 20
+    //   },
+    //   {
+    //     id: 2,
+    //     name: 'bar',
+    //     age: 30
+    //   }
+    // ], {
+    //   operator: 'OR'
+    // })
+    // const names = knex.raw('CASE WHEN users.`id` = 1 THEN "Jaakkk" WHEN users.`id` = 2 THEN "Wookk" END')
+    // const ages = knex.raw('CASE WHEN users.`id` = 1 THEN 50 WHEN users.`id` = 2 THEN 70 END;')
+    // const query = await knex('sites')
+    //   .update({
+    //     name: names,
+    //     age: ages
+    //   })
+
+    // console.log(query.toString())
+
     const filterDictionary = {
       name: 'sites.name',
       url: 'sites.url',
@@ -34,7 +59,7 @@ module.exports = {
         name: 'tags.name'
       })
 
-      const query = knex('sites')
+      const list = await knex('sites')
         .leftJoin('site_tags', 'site_tags.site_id', 'sites.id')
         .leftJoin('tags', 'tags.id', 'site_tags.tag_id')
         .where('sites.deleted_at', null)
@@ -59,17 +84,15 @@ module.exports = {
               name: 'sites.name',
               url: 'sites.url',
               api: 'sites.api',
-              tags: raw(`IF(MIN(tags.id) IS NULL, JSON_ARRAY(), JSON_ARRAYAGG(IF(tags.id IS NULL, NULL, ${tagJsonObject})))`),
+              tags: raw(`IF(MIN(tags.id) IS NULL, JSON_ARRAY(), JSON_ARRAYAGG(${tagJsonObject}))`),
               settings: 'sites.settings',
               created_at: 'sites.created_at'
             })
           }
         })
 
-      const list = await query
-
       if (isCount) {
-        return list
+        return _get(list, 'total', 0)
       }
 
       list.forEach(element => {

@@ -10,6 +10,7 @@ const _isPlainObject = require('lodash/isPlainObject')
 const _size = require('lodash/size')
 const _isString = require('lodash/isString')
 const _isArray = require('lodash/isArray')
+const isArray = require('lodash/isArray')
 
 // helpers
 const isDate = date => !isNaN(new Date(date).getTime())
@@ -236,11 +237,78 @@ function wrapCase (caseStatements) {
   return raw(`(CASE ${caseStatements} END)`)
 }
 
+async function bulkUpdate (columns, data, options) {
+  // const names = knex.raw('CASE WHEN users.`id` = 1 THEN "Jaakkk" WHEN users.`id` = 2 THEN "Wookk" END')
+  // const ages = knex.raw('CASE WHEN users.`id` = 1 THEN 50 WHEN users.`id` = 2 THEN 70 END;')
+  // const query = await knex('sites')
+  //   .update({
+  //     name: names,
+  //     age: ages
+  //   })
+
+  // bulkUpdate(['id', 'name'], [
+  //   {
+  //     id: 1,
+  //     name: 'foo',
+  //     age: 20
+  //   },
+  //   {
+  //     id: 2,
+  //     name: 'bar',
+  //     age: 30
+  //   }
+  // ], {
+  //   operator: 'OR'
+  // })
+
+  //   UPDATE
+  //   `sites`
+  // SET
+  //   `name` =
+  //   CASE
+  //     WHEN users.`id` = 1
+  //     THEN "Jaakkk"
+  //     WHEN users.`id` = 2
+  //     THEN "Wookk"
+  //   END,
+  //   `age` =
+  //   CASE
+  //     WHEN users.`id` = 1
+  //     THEN 50
+  //     WHEN users.`id` = 2
+  //     THEN 70
+  //   END;
+
+  // const updateColumns = {}
+  // data.forEach(item => {
+  //   let caseStatement = ''
+  //   const s = {}
+  //   for (const key in item) {
+  //     if (key === 'id') {
+  //       continue
+  //     }
+
+  //     caseStatement = `CASE WHEN users.id = ${item.id} THEN '${item[key]}' END`
+  //     updateColumns[key] = caseStatement
+  //   }
+  // })
+
+  // const query = await knex('sites')
+  //   .update(updateColumns)
+
+  // console.log(query.toString())
+
+  // console.log(columns)
+  // console.log(data)
+  // console.log(options)
+}
+
 module.exports = {
   raw,
   makeQuery,
   findBy,
   jsonObject,
   jsonExtract,
-  wrapCase
+  wrapCase,
+  bulkUpdate
 }
