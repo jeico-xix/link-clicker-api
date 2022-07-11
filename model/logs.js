@@ -7,6 +7,7 @@ const { makeQuery, jsonObject } = require('@utilities/knex-helper')
 const moment = require('@utilities/moment')
 
 // libs
+const _get = require('lodash/get')
 const _isEmpty = require('lodash/isEmpty')
 const _isNil = require('lodash/isNil')
 const _castArray = require('lodash/castArray')
@@ -19,18 +20,19 @@ module.exports = {
     const filterDictionary = {
       site_name: 'sites.name',
       tag_name: 'tags.name',
-      status: 'logs.status',
-      page: 'logs.page'
+      status: 'logs.status'
     }
 
     const sortDictionary = {}
 
     const dateDictionary = {
+      // started_at: 'logs.started_at',
+      // finished_at: 'logs.finished_at',
       created_at: 'logs.created_at'
     }
 
     try {
-      const query = knex('logs')
+      const list = await knex('logs')
         .leftJoin('site_tags', 'logs.site_tag_id', 'site_tags.id')
         .leftJoin('sites', 'site_tags.site_id', 'sites.id')
         .leftJoin('tags', 'site_tags.tag_id', 'tags.id')
@@ -69,10 +71,8 @@ module.exports = {
           }
         })
 
-      const list = await query
-
       if (isCount) {
-        return list
+        return _get(list, 'total', 0)
       }
 
       list.forEach(item => {
@@ -82,7 +82,8 @@ module.exports = {
         const startedAt = moment(item.started_at)
         const finishedAt = moment(item.finished_at)
         const duration = moment.duration(finishedAt.diff(startedAt))
-        item.duration = (isNaN(duration.asSeconds())) ? '---' : `${duration.asSeconds()} secs`
+        const formattedDuration = moment.utc(duration.as('milliseconds'))
+        item.duration = (formattedDuration.isValid()) ? formattedDuration.format('mm:ss') : '---'
       })
 
       return list

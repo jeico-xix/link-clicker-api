@@ -16,30 +16,6 @@ const _pickBy = require('lodash/pickBy')
 
 module.exports = {
   async list ({ filterBy, q, page, rows, sortBy, sort, isCount, dateBy, dateFrom, dateTo } = {}) {
-    // bulkUpdate('id', [
-    //   {
-    //     id: 1,
-    //     name: 'foo',
-    //     age: 20
-    //   },
-    //   {
-    //     id: 2,
-    //     name: 'bar',
-    //     age: 30
-    //   }
-    // ], {
-    //   operator: 'OR'
-    // })
-    // const names = knex.raw('CASE WHEN users.`id` = 1 THEN "Jaakkk" WHEN users.`id` = 2 THEN "Wookk" END')
-    // const ages = knex.raw('CASE WHEN users.`id` = 1 THEN 50 WHEN users.`id` = 2 THEN 70 END;')
-    // const query = await knex('sites')
-    //   .update({
-    //     name: names,
-    //     age: ages
-    //   })
-
-    // console.log(query.toString())
-
     const filterDictionary = {
       name: 'sites.name',
       url: 'sites.url',

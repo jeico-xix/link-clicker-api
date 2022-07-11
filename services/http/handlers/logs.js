@@ -37,7 +37,7 @@ module.exports = ({ router }) => router
       const list = await Logs.list({ ...params })
       const count = await Logs.list({ ...params, isCount: true })
 
-      ctx.body = { count: _get(count, 'total', 0), list }
+      ctx.body = { count, list }
     } catch (error) {
       console.log(error)
       ctx.throw(error)
