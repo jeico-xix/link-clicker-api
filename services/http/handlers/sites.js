@@ -18,7 +18,9 @@ module.exports = ({ router }) => router
 
   .use(authentication())
 
-  .get('/', async ctx => {
+  .get('unauth', '/', async ctx => {
+    console.log(ctx.request.ip)
+
     try {
       const query = ctx.request.query
       const params = {

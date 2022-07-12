@@ -10,6 +10,7 @@ const path = require('path')
 
 // instances
 const app = new Koa()
+app.proxy = true
 
 // helpers
 async function getRoutes () {

@@ -63,6 +63,7 @@ module.exports = {
                 name: 'tags.name'
               }),
               status: 'logs.status',
+              ip: 'logs.ip',
               page: 'logs.page',
               started_at: 'logs.started_at',
               finished_at: 'logs.finished_at',
@@ -167,6 +168,7 @@ module.exports = {
     const fillables = new Set([
       'site_tag_id',
       'status',
+      'ip',
       'page',
       'started_at',
       'finished_at'

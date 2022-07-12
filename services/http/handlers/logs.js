@@ -48,6 +48,8 @@ module.exports = ({ router }) => router
     const schema = Joi.object({
       site_tag_id: Joi.number()
         .required(),
+      ip: Joi.string()
+        .required(),
       started_at: Joi.string()
         .required()
     })
@@ -56,8 +58,11 @@ module.exports = ({ router }) => router
       const request = await schema.validateAsync(ctx.request.body)
       const inserted = await Logs.store({
         site_tag_id: request.site_tag_id,
+        ip: request.ip,
         started_at: request.started_at
       })
+
+      console.log(ctx.request.ip)
 
       redis.emitSocketUser('logs', 'insert', inserted)
 
