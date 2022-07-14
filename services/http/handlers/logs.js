@@ -50,7 +50,8 @@ module.exports = ({ router }) => router
       site_tag_id: Joi.number()
         .required(),
       country_id: Joi.number()
-        .required(),
+        .optional()
+        .allow(null),
       ip: Joi.string()
         .required(),
       started_at: Joi.string()
