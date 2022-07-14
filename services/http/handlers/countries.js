@@ -1,21 +1,20 @@
-// config
-const redis = require('@config/redis')
-
+/**
+ * Change necessarily and remove this comment
+ */
 // store
-const Logs = require('@model/logs')
+const Countries = require('@model/countries')
 
 // utilities
 
 // libraries
 const Joi = require('joi')
 const _get = require('lodash/get')
-const _castArray = require('lodash/castArray')
 
 // middlewares
 const authentication = require('@middleware/authentication')
 
 module.exports = ({ router }) => router
-  .prefix('/logs')
+  .prefix('/countries')
 
   .use(authentication())
 
@@ -23,8 +22,8 @@ module.exports = ({ router }) => router
     try {
       const query = ctx.request.query
       const params = {
-        filterBy: _castArray(query['filter_by[]'] || query.filter_by || []),
-        q: _castArray(query['q[]'] || query.q || []),
+        filterBy: query.filter_by,
+        q: query.q,
         page: query.page,
         rows: query.rows,
         sortBy: query.sort_by,
@@ -35,8 +34,8 @@ module.exports = ({ router }) => router
         status: query.status
       }
 
-      const list = await Logs.list({ ...params })
-      const count = await Logs.list({ ...params, isCount: true })
+      const list = await Countries.list({ ...params })
+      const count = await Countries.list({ ...params, isCount: true })
 
       ctx.body = { count, list }
     } catch (error) {
@@ -47,26 +46,22 @@ module.exports = ({ router }) => router
 
   .post('/', async ctx => {
     const schema = Joi.object({
-      site_tag_id: Joi.number()
+      name: Joi.string()
         .required(),
-      country_id: Joi.number()
+      code: Joi.string()
         .required(),
-      ip: Joi.string()
-        .required(),
-      started_at: Joi.string()
+      status: Joi.string()
         .required()
     })
 
     try {
       const request = await schema.validateAsync(ctx.request.body)
-      const inserted = await Logs.store({
-        site_tag_id: request.site_tag_id,
-        country_id: request.country_id,
-        ip: request.ip,
-        started_at: request.started_at
-      })
 
-      redis.emitSocketUser('logs', 'insert', inserted)
+      await Countries.store({
+        name: request.name,
+        code: request.code,
+        status: request.status
+      })
 
       ctx.status = 200
     } catch (error) {
@@ -75,27 +70,34 @@ module.exports = ({ router }) => router
     }
   })
 
-  .patch('/', async ctx => {
+  .patch('/:id(\\d+)', async ctx => {
     const schema = Joi.object({
-      site_tag_id: Joi.number()
+      name: Joi.string()
         .required(),
-      status: Joi.string()
-        .optional(),
-      page: Joi.number()
-        .allow(null)
-        .optional(),
-      finished_at: Joi.string()
-        .required()
+      code: Joi.string()
+        .required(),
+      status: Joi.optional()
     })
 
     try {
       const data = await schema.validateAsync(ctx.request.body)
 
-      await Logs.modify(ctx.request.body.site_tag_id, data)
+      ctx.body = await Countries.modify(ctx.params.id, data)
+    } catch (error) {
+      console.log(error)
+      ctx.throw(error)
+    }
+  })
 
-      redis.emitSocketUser('logs', 'insert', {})
+  .delete('/:id(\\d+)', async ctx => {
+    try {
+      const id = ctx.params.id
 
-      ctx.status = 204
+      await Countries.modify(id, {
+        deleted_at: new Date()
+      })
+
+      ctx.status = 200
     } catch (error) {
       console.log(error)
       ctx.throw(error)

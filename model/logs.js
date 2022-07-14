@@ -33,9 +33,10 @@ module.exports = {
 
     try {
       const list = await knex('logs')
-        .leftJoin('site_tags', 'logs.site_tag_id', 'site_tags.id')
-        .leftJoin('sites', 'site_tags.site_id', 'sites.id')
-        .leftJoin('tags', 'site_tags.tag_id', 'tags.id')
+        .leftJoin('site_tags', 'site_tags.id', 'logs.site_tag_id')
+        .leftJoin('sites', 'sites.id', 'site_tags.site_id')
+        .leftJoin('tags', 'tags.id', 'site_tags.tag_id')
+        .leftJoin('countries', 'countries.id', 'logs.country_id')
         .orderBy('logs.id', 'desc')
         .modify(knex => {
           makeQuery({
@@ -54,6 +55,11 @@ module.exports = {
           } else {
             knex.select({
               id: 'logs.id',
+              country: jsonObject({
+                id: 'countries.id',
+                name: 'countries.name',
+                code: 'countries.code'
+              }),
               sites: jsonObject({
                 id: 'sites.id',
                 name: 'sites.name'
@@ -78,6 +84,7 @@ module.exports = {
 
       list.forEach(item => {
         item.sites = JSON.parse(item.sites)
+        item.country = JSON.parse(item.country)
         item.tags = JSON.parse(item.tags)
 
         const startedAt = moment(item.started_at)
@@ -167,6 +174,7 @@ module.exports = {
   async store (payload) {
     const fillables = new Set([
       'site_tag_id',
+      'country_id',
       'status',
       'ip',
       'page',

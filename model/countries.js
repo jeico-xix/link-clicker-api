@@ -1,9 +1,8 @@
 // store
 const knex = require('@config/knex')
-// const redis = require('@config/redis')
 
 // utilities
-const { makeQuery, jsonObject, raw } = require('@utilities/knex-helper')
+const { makeQuery } = require('@utilities/knex-helper')
 
 // libs
 const _get = require('lodash/get')
@@ -17,29 +16,21 @@ const _pickBy = require('lodash/pickBy')
 module.exports = {
   async list ({ filterBy, q, page, rows, sortBy, sort, isCount, dateBy, dateFrom, dateTo } = {}) {
     const filterDictionary = {
-      name: 'sites.name',
-      url: 'sites.url',
-      api: 'sites.api'
+      name: 'countries.name',
+      code: 'countries.code',
+      status: 'countries.status'
     }
 
     const sortDictionary = {}
 
     const dateDictionary = {
-      created_at: 'sites.created_at'
+      created_at: 'countries.created_at',
+      updated_at: 'countries.updated_at'
     }
 
     try {
-      const tagJsonObject = jsonObject({
-        id: 'tags.id',
-        site_tag_id: 'site_tags.id',
-        name: 'tags.name'
-      })
-
-      const list = await knex('sites')
-        .leftJoin('site_tags', 'site_tags.site_id', 'sites.id')
-        .leftJoin('tags', 'tags.id', 'site_tags.tag_id')
-        .where('sites.deleted_at', null)
-        .groupBy('sites.id')
+      const list = await knex('countries')
+        .where('countries.deleted_at', null)
         .modify(knex => {
           makeQuery({
             ...{ filterBy, q, filterDictionary },
@@ -52,17 +43,15 @@ module.exports = {
 
           if (isCount) {
             knex
-              .select({ total: raw('COUNT(sites.id) OVER()') })
+              .count({ total: 'countries.id' })
               .first()
           } else {
             knex.select({
-              id: 'sites.id',
-              name: 'sites.name',
-              url: 'sites.url',
-              api: 'sites.api',
-              tags: raw(`IF(MIN(tags.id) IS NULL, JSON_ARRAY(), JSON_ARRAYAGG(${tagJsonObject}))`),
-              settings: 'sites.settings',
-              created_at: 'sites.created_at'
+              id: 'countries.id',
+              name: 'countries.name',
+              code: 'countries.code',
+              status: 'countries.status',
+              created_at: 'countries.created_at'
             })
           }
         })
@@ -70,11 +59,6 @@ module.exports = {
       if (isCount) {
         return _get(list, 'total', 0)
       }
-
-      list.forEach(element => {
-        element.settings = JSON.parse(element.settings)
-        element.tags = JSON.parse(element.tags)
-      })
 
       return list
     } catch (error) {
@@ -136,9 +120,8 @@ module.exports = {
   async store (payload) {
     const fillables = new Set([
       'name',
-      'url',
-      'api',
-      'settings'
+      'code',
+      'status'
     ])
 
     try {
@@ -146,22 +129,24 @@ module.exports = {
       const filterer = hay => _pickBy(hay, (val, key) => !_isNil(val) && fillables.has(key))
       const data = arrayPayload.map(filterer)
 
-      await knex('sites')
-        .where(function () {
-          this.where('sites.name', payload.name)
-            .orWhere('sites.url', payload.url)
-        })
-        .whereNotNull('sites.deleted_at', null)
+      if (payload.status === 'enabled') {
+        await knex({ tbl: 'countries' })
+          .whereNotNull('tbl.id')
+          .update({ status: 'disabled' })
+      }
+
+      await knex('countries')
+        .where('countries.name', payload.country)
+        .whereNotNull('countries.deleted_at', null)
         .update({
+          status: payload.status,
           deleted_at: null
         })
 
-      const [id] = await knex('sites')
+      await knex('countries')
         .insert(data)
-        .onConflict('name', 'url')
+        .onConflict('name', 'code')
         .ignore()
-
-      return id
     } catch (error) {
       console.log(error)
       throw error
@@ -173,9 +158,8 @@ module.exports = {
       const dictionary = {
         id: 'id',
         name: 'name',
-        url: 'url',
-        api: 'api',
-        settings: 'settings',
+        code: 'code',
+        status: 'status',
         deleted_at: 'deleted_at'
       }
 
@@ -195,7 +179,13 @@ module.exports = {
         return
       }
 
-      await knex({ tbl: 'sites' })
+      if (payload.status === 'enabled') {
+        await knex({ tbl: 'countries' })
+          .whereNotNull('tbl.id')
+          .update({ status: 'disabled' })
+      }
+
+      await knex({ tbl: 'countries' })
         .where('tbl.id', id)
         .update(updateData)
     } catch (error) {

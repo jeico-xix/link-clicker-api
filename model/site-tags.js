@@ -205,7 +205,9 @@ module.exports = {
     try {
       await knex('site_tags')
         .where('site_id', id)
-        .del()
+        .update({
+          deleted_at: new Date()
+        })
     } catch (error) {
       console.log(error)
       throw error

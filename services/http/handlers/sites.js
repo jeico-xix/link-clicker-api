@@ -18,9 +18,7 @@ module.exports = ({ router }) => router
 
   .use(authentication())
 
-  .get('unauth', '/', async ctx => {
-    console.log(ctx.request.ip)
-
+  .get('/', async ctx => {
     try {
       const query = ctx.request.query
       const params = {
@@ -89,7 +87,7 @@ module.exports = ({ router }) => router
     }
   })
 
-  .patch('/:id', async ctx => {
+  .patch('/:id(\\d+)', async ctx => {
     const schema = Joi.object({
       name: Joi.string()
         .required(),
@@ -118,7 +116,7 @@ module.exports = ({ router }) => router
     }
   })
 
-  .delete('/:id', async ctx => {
+  .delete('/:id(\\d+)', async ctx => {
     try {
       const id = ctx.params.id
 
