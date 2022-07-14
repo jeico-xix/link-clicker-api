@@ -9,6 +9,7 @@ const Countries = require('@model/countries')
 // libraries
 const Joi = require('joi')
 const _get = require('lodash/get')
+const _castArray = require('lodash/castArray')
 
 // middlewares
 const authentication = require('@middleware/authentication')
@@ -22,8 +23,8 @@ module.exports = ({ router }) => router
     try {
       const query = ctx.request.query
       const params = {
-        filterBy: query.filter_by,
-        q: query.q,
+        filterBy: _castArray(query['filter_by[]'] || query.filter_by || []),
+        q: _castArray(query['q[]'] || query.q || []),
         page: query.page,
         rows: query.rows,
         sortBy: query.sort_by,
@@ -51,7 +52,8 @@ module.exports = ({ router }) => router
       code: Joi.string()
         .required(),
       status: Joi.string()
-        .required()
+        .optional()
+        .allow('')
     })
 
     try {
@@ -59,8 +61,7 @@ module.exports = ({ router }) => router
 
       await Countries.store({
         name: request.name,
-        code: request.code,
-        status: request.status
+        code: request.code
       })
 
       ctx.status = 200

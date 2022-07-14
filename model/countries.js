@@ -67,61 +67,10 @@ module.exports = {
     }
   },
 
-  async find (conditions) {
-    const dictionary = {
-      id: 'sites.id',
-      type_id: 'sites.type_id',
-      name: 'sites.name',
-      table: 'sites.table'
-    }
-
-    try {
-      const data = await knex('sites')
-        .modify(knex => {
-          if (_isEmpty(conditions)) {
-            knex.whereRaw('1 = 0')
-          }
-
-          for (const key in conditions) {
-            const curr = conditions[key]
-
-            if (dictionary[key] && !_isNil(curr)) {
-              knex.where(dictionary[key], curr)
-            }
-          }
-
-          /**
-           * Change necessarily and remove this comment
-           */
-          if (conditions.is_deleted) {
-            knex.whereNotNull('sites.deleted_at')
-          } else {
-            knex.whereNull('sites.deleted_at')
-          }
-        })
-        /**
-         * Change necessarily and remove this comment
-         */
-        .select({
-          id: 'sites.id',
-          type_id: 'sites.type_id',
-          name: 'sites.name',
-          table: 'sites.table'
-        })
-        .first()
-
-      return data
-    } catch (error) {
-      console.log(error)
-      throw error
-    }
-  },
-
   async store (payload) {
     const fillables = new Set([
       'name',
-      'code',
-      'status'
+      'code'
     ])
 
     try {
@@ -129,17 +78,10 @@ module.exports = {
       const filterer = hay => _pickBy(hay, (val, key) => !_isNil(val) && fillables.has(key))
       const data = arrayPayload.map(filterer)
 
-      if (payload.status === 'enabled') {
-        await knex({ tbl: 'countries' })
-          .whereNotNull('tbl.id')
-          .update({ status: 'disabled' })
-      }
-
       await knex('countries')
-        .where('countries.name', payload.country)
+        .where('countries.name', payload.name)
         .whereNotNull('countries.deleted_at', null)
         .update({
-          status: payload.status,
           deleted_at: null
         })
 
@@ -177,12 +119,6 @@ module.exports = {
 
       if (_isEmpty(updateData)) {
         return
-      }
-
-      if (payload.status === 'enabled') {
-        await knex({ tbl: 'countries' })
-          .whereNotNull('tbl.id')
-          .update({ status: 'disabled' })
       }
 
       await knex({ tbl: 'countries' })

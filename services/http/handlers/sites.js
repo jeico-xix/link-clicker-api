@@ -9,6 +9,7 @@ const SiteTags = require('@model/site-tags')
 
 // libraries
 const Joi = require('joi')
+const _castArray = require('lodash/castArray')
 
 // middlewares
 const authentication = require('@middleware/authentication')
@@ -22,8 +23,8 @@ module.exports = ({ router }) => router
     try {
       const query = ctx.request.query
       const params = {
-        filterBy: query.filter_by,
-        q: query.q,
+        filterBy: _castArray(query['filter_by[]'] || query.filter_by || []),
+        q: _castArray(query['q[]'] || query.q || []),
         page: query.page,
         rows: query.rows,
         sortBy: query.sort_by,
