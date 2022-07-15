@@ -20,6 +20,7 @@ module.exports = {
     const filterDictionary = {
       site_name: 'sites.name',
       tag_name: 'tags.name',
+      log_term: 'logs.term',
       status: 'logs.status'
     }
 
@@ -39,6 +40,7 @@ module.exports = {
         .leftJoin('sites', 'sites.id', 'site_tags.site_id')
         .leftJoin('tags', 'tags.id', 'site_tags.tag_id')
         .leftJoin('countries', 'countries.id', 'logs.country_id')
+        .orderBy('logs.id', 'desc')
         .modify(knex => {
           makeQuery({
             ...{ filterBy, q, filterDictionary },
