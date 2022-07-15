@@ -23,7 +23,9 @@ module.exports = {
       status: 'logs.status'
     }
 
-    const sortDictionary = {}
+    const sortDictionary = {
+      id: 'logs.id'
+    }
 
     const dateDictionary = {
       // started_at: 'logs.started_at',
@@ -37,7 +39,6 @@ module.exports = {
         .leftJoin('sites', 'sites.id', 'site_tags.site_id')
         .leftJoin('tags', 'tags.id', 'site_tags.tag_id')
         .leftJoin('countries', 'countries.id', 'logs.country_id')
-        .orderBy('logs.id', 'desc')
         .modify(knex => {
           makeQuery({
             ...{ filterBy, q, filterDictionary },
@@ -227,6 +228,19 @@ module.exports = {
       await knex({ tbl: 'logs' })
         .where('tbl.site_tag_id', id)
         .update(updateData)
+    } catch (error) {
+      console.log(error)
+      throw error
+    }
+  },
+
+  async boot () {
+    try {
+      await knex('logs')
+        .where('status', 'on-going')
+        .update({
+          status: 'failed'
+        })
     } catch (error) {
       console.log(error)
       throw error

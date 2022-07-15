@@ -76,6 +76,17 @@ module.exports = ({ router }) => router
     }
   })
 
+  .post('unauth', '/boot', async ctx => {
+    try {
+      await Logs.boot()
+
+      ctx.status = 200
+    } catch (error) {
+      console.log(error)
+      ctx.throw(error)
+    }
+  })
+
   .patch('/', async ctx => {
     const schema = Joi.object({
       site_tag_id: Joi.number()
