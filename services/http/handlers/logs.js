@@ -52,6 +52,8 @@ module.exports = ({ router }) => router
       country_id: Joi.number()
         .optional()
         .allow(null),
+      term: Joi.string()
+        .required(),
       ip: Joi.string()
         .required(),
       started_at: Joi.string()
@@ -63,6 +65,7 @@ module.exports = ({ router }) => router
       const inserted = await Logs.store({
         site_tag_id: request.site_tag_id,
         country_id: request.country_id,
+        term: request.term,
         ip: request.ip,
         started_at: request.started_at
       })
