@@ -8,6 +8,7 @@ const Tags = require('@model/tags')
 
 // libraries
 const _get = require('lodash/get')
+const Joi = require('joi')
 
 // middlewares
 const authentication = require('@middleware/authentication')
@@ -45,6 +46,22 @@ module.exports = ({ router }) => router
       const count = await Tags.list({ ...params, isCount: true })
 
       ctx.body = { count: _get(count, 'total', 0), list }
+    } catch (error) {
+      console.log(error)
+      ctx.throw(error)
+    }
+  })
+
+  .patch('/:id(\\d+)', async ctx => {
+    const schema = Joi.object({
+      is_active: Joi.boolean()
+        .optional()
+    })
+
+    try {
+      const data = await schema.validateAsync(ctx.request.body)
+
+      ctx.body = await Tags.modify(ctx.params.id, data)
     } catch (error) {
       console.log(error)
       ctx.throw(error)

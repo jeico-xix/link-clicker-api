@@ -166,11 +166,8 @@ module.exports = {
 
   async modify (id, payload) {
     try {
-      /**
-       * Change necessarily and remove this comment
-       */
       const dictionary = {
-        foo: 'tags.foo'
+        is_active: 'is_active'
       }
 
       const updateData = {}
@@ -189,9 +186,6 @@ module.exports = {
         return
       }
 
-      /**
-       * Change necessarily and remove this comment
-       */
       await knex({ tbl: 'tags' })
         .where('tbl.id', id)
         .update(updateData)

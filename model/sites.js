@@ -19,7 +19,8 @@ module.exports = {
     const filterDictionary = {
       name: 'sites.name',
       url: 'sites.url',
-      api: 'sites.api'
+      api: 'sites.api',
+      is_active: 'tags.is_active'
     }
 
     const sortDictionary = {}
@@ -32,7 +33,8 @@ module.exports = {
       const tagJsonObject = jsonObject({
         id: 'tags.id',
         site_tag_id: 'site_tags.id',
-        name: 'tags.name'
+        name: 'tags.name',
+        is_active: 'tags.is_active'
       })
 
       const list = await knex('sites')
