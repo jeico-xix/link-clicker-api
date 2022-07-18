@@ -19,6 +19,7 @@ module.exports = {
   async list ({ filterBy, q, page, rows, sortBy, sort, isCount, dateBy, dateFrom, dateTo } = {}) {
     const filterDictionary = {
       site_name: 'sites.name',
+      site_tag_id: 'site_tags.id',
       tag_name: 'tags.name',
       log_term: 'logs.term',
       status: 'logs.status'
@@ -58,6 +59,9 @@ module.exports = {
           } else {
             knex.select({
               id: 'logs.id',
+              site_tag: jsonObject({
+                id: 'site_tags.id'
+              }),
               country: jsonObject({
                 id: 'countries.id',
                 name: 'countries.name',
@@ -87,6 +91,7 @@ module.exports = {
       }
 
       list.forEach(item => {
+        item.site_tag = JSON.parse(item.site_tag)
         item.sites = JSON.parse(item.sites)
         item.country = JSON.parse(item.country)
         item.tags = JSON.parse(item.tags)
