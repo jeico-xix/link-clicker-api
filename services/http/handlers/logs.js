@@ -10,6 +10,7 @@ const Logs = require('@model/logs')
 const Joi = require('joi')
 const _get = require('lodash/get')
 const _castArray = require('lodash/castArray')
+const _isEmpty = require('lodash/isEmpty')
 
 // middlewares
 const authentication = require('@middleware/authentication')
@@ -39,6 +40,47 @@ module.exports = ({ router }) => router
       const count = await Logs.list({ ...params, isCount: true })
 
       ctx.body = { count, list }
+    } catch (error) {
+      console.log(error)
+      ctx.throw(error)
+    }
+  })
+
+  .get('/summary', async ctx => {
+    try {
+      const query = ctx.request.query
+
+      const siteTagId = query.site_tag_id
+
+      const data = await Logs.find({ site_tag_id: siteTagId })
+
+      if (!data) {
+        ctx.status = 404
+        return
+      }
+
+      const responseData = {
+        site_name: data.sites.name,
+        tag_name: data.tags.name
+      }
+
+      const viewBy = query.view_by
+      if (viewBy === 'daily' || _isEmpty(viewBy)) {
+        const daily = await Logs.summaryDaily(siteTagId, query.year_month)
+        responseData.daily = (!daily) ? {} : daily
+      }
+
+      if (viewBy === 'weekly' || _isEmpty(viewBy)) {
+        const weekly = await Logs.summaryWeekly(siteTagId)
+        responseData.weekly = weekly
+      }
+
+      if (viewBy === 'monthly' || _isEmpty(viewBy)) {
+        const monthly = await Logs.summaryMonthly(siteTagId)
+        responseData.monthly = monthly
+      }
+
+      ctx.body = responseData
     } catch (error) {
       console.log(error)
       ctx.throw(error)

@@ -3,7 +3,7 @@ const knex = require('@config/knex')
 // const redis = require('@config/redis')
 
 // utilities
-const { makeQuery, jsonObject } = require('@utilities/knex-helper')
+const { makeQuery, jsonObject, raw } = require('@utilities/knex-helper')
 const moment = require('@utilities/moment')
 
 // libs
@@ -110,9 +110,143 @@ module.exports = {
     }
   },
 
+  async summaryDaily (siteTagId, yearMonth) {
+    yearMonth = _isEmpty(yearMonth) ? moment().format('YYYYMM') : yearMonth
+
+    try {
+      const subQuery = knex('logs')
+        .leftJoin('site_tags', 'site_tags.id', 'logs.site_tag_id')
+        .leftJoin('sites', 'sites.id', 'site_tags.site_id')
+        .leftJoin('tags', 'tags.id', 'site_tags.tag_id')
+        .where('logs.site_tag_id', siteTagId)
+        .where(raw('EXTRACT(YEAR_MONTH FROM logs.created_at)'), yearMonth)
+        .as('logs')
+        .modify(knex => {
+          knex.select({
+            site_name: 'sites.name',
+            tag_name: 'tags.name',
+            page: 'logs.page',
+            day: raw('DATE_FORMAT(logs.created_at, "%d")')
+          })
+        })
+
+      const item = await knex(subQuery)
+        .groupBy('site_name')
+        .groupBy('tag_name')
+        .modify(knex => {
+          knex.select({
+            site_name: 'logs.site_name',
+            tag_name: 'logs.tag_name',
+            labels: raw('JSON_ARRAYAGG(day)'),
+            data: raw('JSON_ARRAYAGG(page)')
+          })
+        })
+        .first()
+
+      if (item) {
+        item.labels = JSON.parse(item.labels)
+        item.data = JSON.parse(item.data)
+      }
+
+      return item
+    } catch (error) {
+      console.log(error)
+      throw error
+    }
+  },
+
+  async summaryWeekly (siteTagId) {
+    try {
+      const subQuery = knex('logs')
+        .leftJoin('site_tags', 'site_tags.id', 'logs.site_tag_id')
+        .leftJoin('sites', 'sites.id', 'site_tags.site_id')
+        .leftJoin('tags', 'tags.id', 'site_tags.tag_id')
+        .where('logs.site_tag_id', siteTagId)
+        .groupBy('logs.site_tag_id')
+        .groupBy('month')
+        .as('logs')
+        .modify(knex => {
+          knex.select({
+            site_name: 'sites.name',
+            tag_name: 'tags.name',
+            page: raw('CAST(AVG(page) AS DECIMAL)'),
+            month: raw('CONCAT(DATE_FORMAT(logs.created_at, "%b"), ": Week ", FLOOR((DayOfMonth(logs.created_at)-1)/ 7)+ 1)')
+          })
+        })
+
+      const item = await knex(subQuery)
+        .groupBy('site_name')
+        .groupBy('tag_name')
+        .modify(knex => {
+          knex.select({
+            site_name: 'logs.site_name',
+            tag_name: 'logs.tag_name',
+            labels: raw('JSON_ARRAYAGG(month)'),
+            data: raw('JSON_ARRAYAGG(page)')
+          })
+        })
+        .first()
+
+      if (item) {
+        item.labels = JSON.parse(item.labels)
+        item.data = JSON.parse(item.data)
+      }
+
+      return item
+    } catch (error) {
+      console.log(error)
+      throw error
+    }
+  },
+
+  async summaryMonthly (siteTagId) {
+    try {
+      const subQuery = knex('logs')
+        .leftJoin('site_tags', 'site_tags.id', 'logs.site_tag_id')
+        .leftJoin('sites', 'sites.id', 'site_tags.site_id')
+        .leftJoin('tags', 'tags.id', 'site_tags.tag_id')
+        .where('logs.site_tag_id', siteTagId)
+        .groupBy('logs.site_tag_id')
+        .groupBy('month')
+        .as('logs')
+        .modify(knex => {
+          knex.select({
+            site_name: 'sites.name',
+            tag_name: 'tags.name',
+            page: raw('CAST(AVG(page) AS DECIMAL)'),
+            month: raw('MONTHNAME (`logs`.`created_at`)')
+          })
+        })
+
+      const item = await knex(subQuery)
+        .groupBy('site_name')
+        .groupBy('tag_name')
+        .modify(knex => {
+          knex.select({
+            site_name: 'logs.site_name',
+            tag_name: 'logs.tag_name',
+            labels: raw('JSON_ARRAYAGG(month)'),
+            data: raw('JSON_ARRAYAGG(page)')
+          })
+        })
+        .first()
+
+      if (item) {
+        item.labels = JSON.parse(item.labels)
+        item.data = JSON.parse(item.data)
+      }
+
+      return item
+    } catch (error) {
+      console.log(error)
+      throw error
+    }
+  },
+
   async find (conditions) {
     const dictionary = {
       id: 'logs.id',
+      site_tag_id: 'logs.site_tag_id',
       sites: jsonObject({
         id: 'sites.id',
         name: 'sites.name'
@@ -165,13 +299,15 @@ module.exports = {
         })
         .first()
 
-      data.sites = JSON.parse(data.sites)
-      data.tags = JSON.parse(data.tags)
+      if (data) {
+        data.sites = JSON.parse(data.sites)
+        data.tags = JSON.parse(data.tags)
 
-      const startedAt = moment(data.started_at)
-      const finishedAt = moment(data.finished_at)
-      const duration = moment.duration(finishedAt.diff(startedAt))
-      data.duration = `${duration.asSeconds()} secs`
+        const startedAt = moment(data.started_at)
+        const finishedAt = moment(data.finished_at)
+        const duration = moment.duration(finishedAt.diff(startedAt))
+        data.duration = `${duration.asSeconds()} secs`
+      }
 
       return data
     } catch (error) {
