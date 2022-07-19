@@ -5,15 +5,23 @@ const redis = require('@config/redis')
 const Logs = require('@model/logs')
 
 // utilities
+const moment = require('@utilities/moment')
 
 // libraries
 const Joi = require('joi')
 const _get = require('lodash/get')
 const _castArray = require('lodash/castArray')
 const _isEmpty = require('lodash/isEmpty')
+const _isArray = require('lodash/isArray')
+const _includes = require('lodash/includes')
 
 // middlewares
 const authentication = require('@middleware/authentication')
+
+// helper
+const isViewBy = (base, term) => {
+  return base === term || _isEmpty(base) || (_isArray(base) && _includes(base, term))
+}
 
 module.exports = ({ router }) => router
   .prefix('/logs')
@@ -65,19 +73,25 @@ module.exports = ({ router }) => router
       }
 
       const viewBy = query.view_by
-      if (viewBy === 'daily' || _isEmpty(viewBy)) {
-        const daily = await Logs.summaryDaily(siteTagId, query.year_month)
+      let month = query.month
+      month = _isEmpty(month) ? moment().format('MM') : month
+
+      let year = query.year
+      year = _isEmpty(year) ? moment().format('YYYY') : year
+
+      if (isViewBy(viewBy, 'daily')) {
+        const daily = await Logs.summaryDaily(siteTagId, year + month)
         responseData.daily = (!daily) ? {} : daily
       }
 
-      if (viewBy === 'weekly' || _isEmpty(viewBy)) {
-        const weekly = await Logs.summaryWeekly(siteTagId)
-        responseData.weekly = weekly
+      if (isViewBy(viewBy, 'weekly')) {
+        const weekly = await Logs.summaryWeekly(siteTagId, year)
+        responseData.weekly = (!weekly) ? {} : weekly
       }
 
-      if (viewBy === 'monthly' || _isEmpty(viewBy)) {
-        const monthly = await Logs.summaryMonthly(siteTagId)
-        responseData.monthly = monthly
+      if (isViewBy(viewBy, 'monthly')) {
+        const monthly = await Logs.summaryMonthly(siteTagId, year)
+        responseData.monthly = (!monthly) ? {} : monthly
       }
 
       ctx.body = responseData

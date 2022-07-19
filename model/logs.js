@@ -110,38 +110,44 @@ module.exports = {
     }
   },
 
+  async summary (siteTagId, whereRawStatement, value, subQuerySelect, mainSelect, groupBys = []) {
+    let subQuery = knex('logs')
+      .leftJoin('site_tags', 'site_tags.id', 'logs.site_tag_id')
+      .leftJoin('sites', 'sites.id', 'site_tags.site_id')
+      .leftJoin('tags', 'tags.id', 'site_tags.tag_id')
+      .where('logs.site_tag_id', siteTagId)
+      .where(whereRawStatement, value)
+
+    groupBys.forEach(groupBy => {
+      subQuery = subQuery.groupBy(groupBy)
+    })
+
+    subQuery.as('logs')
+      .modify(knex => {
+        knex.select(subQuerySelect)
+      })
+
+    const item = await knex(subQuery)
+      .modify(knex => {
+        knex.select(mainSelect)
+      })
+      .first()
+
+    return item
+  },
+
   async summaryDaily (siteTagId, yearMonth) {
-    yearMonth = _isEmpty(yearMonth) ? moment().format('YYYYMM') : yearMonth
-
     try {
-      const subQuery = knex('logs')
-        .leftJoin('site_tags', 'site_tags.id', 'logs.site_tag_id')
-        .leftJoin('sites', 'sites.id', 'site_tags.site_id')
-        .leftJoin('tags', 'tags.id', 'site_tags.tag_id')
-        .where('logs.site_tag_id', siteTagId)
-        .where(raw('EXTRACT(YEAR_MONTH FROM logs.created_at)'), yearMonth)
-        .as('logs')
-        .modify(knex => {
-          knex.select({
-            site_name: 'sites.name',
-            tag_name: 'tags.name',
-            page: 'logs.page',
-            day: raw('DATE_FORMAT(logs.created_at, "%d")')
-          })
-        })
-
-      const item = await knex(subQuery)
-        .groupBy('site_name')
-        .groupBy('tag_name')
-        .modify(knex => {
-          knex.select({
-            site_name: 'logs.site_name',
-            tag_name: 'logs.tag_name',
-            labels: raw('JSON_ARRAYAGG(day)'),
-            data: raw('JSON_ARRAYAGG(page)')
-          })
-        })
-        .first()
+      const item = await this.summary(siteTagId, raw('EXTRACT(YEAR_MONTH FROM logs.created_at)'), yearMonth,
+        {
+          page: 'logs.page',
+          day: raw('DATE_FORMAT(logs.created_at, "%d")')
+        },
+        {
+          labels: raw('JSON_ARRAYAGG(day)'),
+          data: raw('JSON_ARRAYAGG(page)')
+        }
+      )
 
       if (item) {
         item.labels = JSON.parse(item.labels)
@@ -155,37 +161,19 @@ module.exports = {
     }
   },
 
-  async summaryWeekly (siteTagId) {
+  async summaryWeekly (siteTagId, year) {
     try {
-      const subQuery = knex('logs')
-        .leftJoin('site_tags', 'site_tags.id', 'logs.site_tag_id')
-        .leftJoin('sites', 'sites.id', 'site_tags.site_id')
-        .leftJoin('tags', 'tags.id', 'site_tags.tag_id')
-        .where('logs.site_tag_id', siteTagId)
-        .groupBy('logs.site_tag_id')
-        .groupBy('month')
-        .as('logs')
-        .modify(knex => {
-          knex.select({
-            site_name: 'sites.name',
-            tag_name: 'tags.name',
-            page: raw('CAST(AVG(page) AS DECIMAL)'),
-            month: raw('CONCAT(DATE_FORMAT(logs.created_at, "%b"), ": Week ", FLOOR((DayOfMonth(logs.created_at)-1)/ 7)+ 1)')
-          })
-        })
-
-      const item = await knex(subQuery)
-        .groupBy('site_name')
-        .groupBy('tag_name')
-        .modify(knex => {
-          knex.select({
-            site_name: 'logs.site_name',
-            tag_name: 'logs.tag_name',
-            labels: raw('JSON_ARRAYAGG(month)'),
-            data: raw('JSON_ARRAYAGG(page)')
-          })
-        })
-        .first()
+      const item = await this.summary(siteTagId, raw('EXTRACT(YEAR FROM `logs`.`created_at`)'), year,
+        {
+          page: raw('CAST(AVG(page) AS DECIMAL)'),
+          month: raw('CONCAT(DATE_FORMAT(logs.created_at, "%b"), ": Week ", FLOOR((DayOfMonth(logs.created_at)-1)/ 7)+ 1)')
+        },
+        {
+          labels: raw('JSON_ARRAYAGG(month)'),
+          data: raw('JSON_ARRAYAGG(page)')
+        },
+        ['logs.site_tag_id', 'month']
+      )
 
       if (item) {
         item.labels = JSON.parse(item.labels)
@@ -199,37 +187,19 @@ module.exports = {
     }
   },
 
-  async summaryMonthly (siteTagId) {
+  async summaryMonthly (siteTagId, year) {
     try {
-      const subQuery = knex('logs')
-        .leftJoin('site_tags', 'site_tags.id', 'logs.site_tag_id')
-        .leftJoin('sites', 'sites.id', 'site_tags.site_id')
-        .leftJoin('tags', 'tags.id', 'site_tags.tag_id')
-        .where('logs.site_tag_id', siteTagId)
-        .groupBy('logs.site_tag_id')
-        .groupBy('month')
-        .as('logs')
-        .modify(knex => {
-          knex.select({
-            site_name: 'sites.name',
-            tag_name: 'tags.name',
-            page: raw('CAST(AVG(page) AS DECIMAL)'),
-            month: raw('MONTHNAME (`logs`.`created_at`)')
-          })
-        })
-
-      const item = await knex(subQuery)
-        .groupBy('site_name')
-        .groupBy('tag_name')
-        .modify(knex => {
-          knex.select({
-            site_name: 'logs.site_name',
-            tag_name: 'logs.tag_name',
-            labels: raw('JSON_ARRAYAGG(month)'),
-            data: raw('JSON_ARRAYAGG(page)')
-          })
-        })
-        .first()
+      const item = await this.summary(siteTagId, raw('EXTRACT(YEAR FROM `logs`.`created_at`)'), year,
+        {
+          page: raw('CAST(AVG(page) AS DECIMAL)'),
+          month: raw('MONTHNAME (`logs`.`created_at`)')
+        },
+        {
+          labels: raw('JSON_ARRAYAGG(month)'),
+          data: raw('JSON_ARRAYAGG(page)')
+        },
+        ['logs.site_tag_id', 'month']
+      )
 
       if (item) {
         item.labels = JSON.parse(item.labels)
