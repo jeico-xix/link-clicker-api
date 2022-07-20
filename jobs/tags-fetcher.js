@@ -46,6 +46,22 @@ const methods = {
       data = JSON.parse(data)
       await this.fetchTags(data)
     })
+
+    await this.fetchSites()
+  },
+
+  async fetchSites () {
+    const sites = await knex('sites')
+      .modify(knex => {
+        knex.select({
+          id: 'id',
+          api: 'api'
+        })
+      })
+
+    sites.forEach(site => {
+      this.fetchTags({ api_url: site.api })
+    })
   },
 
   async fetchTags (data) {
@@ -66,7 +82,9 @@ const methods = {
         })
       })
 
-      await this.insertIgnoreTags(data.site_id, arrNames, arrItems)
+      if (data.site_id) {
+        await this.insertIgnoreTags(data.site_id, arrNames, arrItems)
+      }
     })
   },
 
@@ -94,6 +112,18 @@ const methods = {
         })
         .first()
 
+      await knex('tags')
+        .whereNotIn('name', names)
+        .update({
+          deleted_at: new Date()
+        })
+
+      await knex('tags')
+        .whereIn('name', names)
+        .update({
+          deleted_at: null
+        })
+
       if (siteId) {
         const ids = JSON.parse(result.ids)
         const siteTags = []
@@ -104,18 +134,38 @@ const methods = {
           })
         })
 
-        await this.insertIgnoreSiteTags(siteTags)
+        await this.insertIgnoreSiteTags(siteTags, names)
       }
+
+      await this.updateSiteTags(names)
     } catch (error) {
       console.log(error)
       throw error
     }
   },
 
-  async insertIgnoreSiteTags (payload) {
+  async insertIgnoreSiteTags (payload, names) {
     await knex('site_tags').insert(payload)
       .onConflict('site_id', 'tag_id')
       .ignore()
+
+    await this.updateSiteTags(names)
+  },
+
+  async updateSiteTags (names) {
+    await knex('site_tags')
+      .leftJoin('tags', 'tags.id', 'site_tags.tag_id')
+      .whereNotIn('tags.name', names)
+      .update({
+        'site_tags.deleted_at': new Date()
+      })
+
+    await knex('site_tags')
+      .leftJoin('tags', 'tags.id', 'site_tags.tag_id')
+      .whereIn('tags.name', names)
+      .update({
+        'site_tags.deleted_at': null
+      })
   }
 }
 

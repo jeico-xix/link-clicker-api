@@ -80,7 +80,7 @@ module.exports = ({ router }) => router
       year = _isEmpty(year) ? moment().format('YYYY') : year
 
       if (isViewBy(viewBy, 'daily')) {
-        const daily = await Logs.summaryDaily(siteTagId, year + month)
+        const daily = await Logs.summaryDaily(siteTagId, `${year} ${month}`)
         responseData.daily = (!daily) ? {} : daily
       }
 

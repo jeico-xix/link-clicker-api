@@ -37,10 +37,21 @@ module.exports = {
         is_active: 'tags.is_active'
       })
 
+      const subQuery = knex('site_tags')
+        .whereNull('site_tags.deleted_at')
+        .modify(knex => {
+          knex.select({
+            id: 'site_tags.id',
+            site_id: 'site_tags.site_id',
+            tag_id: 'site_tags.tag_id'
+          })
+        })
+
       const list = await knex('sites')
-        .leftJoin('site_tags', 'site_tags.site_id', 'sites.id')
+        .leftJoin({ site_tags: subQuery }, 'site_tags.site_id', 'sites.id')
         .leftJoin('tags', 'tags.id', 'site_tags.tag_id')
-        .where('sites.deleted_at', null)
+        .whereNull('sites.deleted_at')
+        .whereNull('tags.deleted_at')
         .groupBy('sites.id')
         .modify(knex => {
           makeQuery({
