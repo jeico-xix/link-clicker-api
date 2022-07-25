@@ -341,7 +341,7 @@ module.exports = {
       }
 
       await knex({ tbl: 'logs' })
-        .where('tbl.site_tag_id', id)
+        .where('tbl.id', id)
         .update(updateData)
     } catch (error) {
       console.log(error)
