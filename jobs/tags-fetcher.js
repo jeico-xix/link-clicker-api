@@ -85,6 +85,7 @@ const methods = {
       if (data.site_id) {
         await this.insertIgnoreTags(data.site_id, arrNames, arrItems)
       }
+      await this.insertIgnoreTags(null, arrNames, arrItems)
     })
   },
 
