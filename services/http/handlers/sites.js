@@ -76,9 +76,9 @@ module.exports = ({ router }) => router
         settings: JSON.stringify(request.settings)
       })
 
-      redis.emitApp('tags', 'insert', {
-        api_url: request.api,
-        site_id: id
+      redis.emitApp('tags', 'fetchTags', {
+        site_id: id,
+        api_url: request.api
       })
 
       ctx.status = 200
@@ -110,7 +110,14 @@ module.exports = ({ router }) => router
 
       data.settings = JSON.stringify(data.settings)
 
-      ctx.body = await Sites.modify(ctx.params.id, data)
+      const id = ctx.params.id
+
+      redis.emitApp('tags', 'fetchTags', {
+        site_id: id,
+        api_url: data.api
+      })
+
+      ctx.body = await Sites.modify(id, data)
     } catch (error) {
       console.log(error)
       ctx.throw(error)

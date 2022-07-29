@@ -42,8 +42,13 @@ const methods = {
   },
 
   async startListeners () {
-    await redis.subscribe('app:tags:insert', async data => {
+    await redis.subscribe('app:tags:fetchTags', async data => {
       data = JSON.parse(data)
+
+      if (!data.site_id) {
+        await this.fetchSites()
+      }
+
       await this.fetchTags(data)
     })
 
@@ -52,20 +57,20 @@ const methods = {
 
   async fetchSites () {
     const sites = await knex('sites')
-      .modify(knex => {
-        knex.select({
-          id: 'id',
-          api: 'api'
-        })
+      .whereNull('deleted_at')
+      .select({
+        id: 'id',
+        api: 'api'
       })
 
     sites.forEach(site => {
-      this.fetchTags({ api_url: site.api })
+      this.fetchTags({ site_id: site.id, api_url: site.api })
     })
   },
 
   async fetchTags (data) {
-    await axios.get(`${data.api_url}/tags`).then(async response => {
+    try {
+      const response = await axios.get(`${data.api_url}/tags`)
       const arrNames = []
       const arrItems = []
       const list = response.data.list
@@ -82,8 +87,14 @@ const methods = {
         })
       })
 
-      await this.insertIgnoreTags(null, arrNames, arrItems)
-    })
+      const tagIds = await this.insertIgnoreTags(data.site_id, arrNames, arrItems)
+      await this.restoreOrSoftDeleteTags(data.site_id, tagIds)
+
+      await this.insertIgnoreSiteTags(data.site_id, tagIds)
+      await this.restoreOrSoftDeleteSiteTags(data.site_id, tagIds)
+    } catch (error) {
+      console.log(error)
+    }
   },
 
   async insertIgnoreTags (siteId, names, payload) {
@@ -96,73 +107,52 @@ const methods = {
       const filterer = hay => _pickBy(hay, (val, key) => !_isNil(val) && fillables.has(key))
       const data = arrayPayload.map(filterer)
 
-      await knex('tags').insert(data)
+      await knex('tags')
+        .insert(data)
         .onConflict('name')
         .ignore()
 
-      const result = await knex('tags')
+      const tagIds = await knex('tags')
         .whereIn('name', names)
-        .orderBy('name')
-        .modify(knex => {
-          knex.select({
-            ids: raw('IF(MIN(tags.id) IS NULL, JSON_ARRAY(), JSON_ARRAYAGG(tags.id))')
-          })
-        })
-        .first()
+        .pluck('id')
 
-      await knex('tags')
-        .whereNotIn('name', names)
-        .update({
-          deleted_at: new Date()
-        })
-
-      await knex('tags')
-        .whereIn('name', names)
-        .update({
-          deleted_at: null
-        })
-
-      if (siteId) {
-        const ids = JSON.parse(result.ids)
-        const siteTags = []
-        ids.forEach(id => {
-          siteTags.push({
-            site_id: siteId,
-            tag_id: id
-          })
-        })
-
-        await this.insertIgnoreSiteTags(siteTags, names)
-      }
-
-      await this.updateSiteTags(names)
+      return tagIds
     } catch (error) {
       console.log(error)
       throw error
     }
   },
 
-  async insertIgnoreSiteTags (payload, names) {
-    await knex('site_tags').insert(payload)
-      .onConflict('site_id', 'tag_id')
-      .ignore()
-
-    await this.updateSiteTags(names)
+  async restoreOrSoftDeleteTags (siteId, tagIds) {
+    await knex('tags')
+      .leftJoin('site_tags', 'site_tags.tag_id', 'tags.id')
+      .where('site_tags.site_id', siteId)
+      .update({
+        'tags.deleted_at': raw(`(CASE WHEN tags.id IN (${tagIds}) THEN NULL ELSE '${moment().format('YYYY-MM-DD HH:mm:ss')}' END)`)
+      })
   },
 
-  async updateSiteTags (names) {
-    await knex('site_tags')
-      .leftJoin('tags', 'tags.id', 'site_tags.tag_id')
-      .whereNotIn('tags.name', names)
-      .update({
-        'site_tags.deleted_at': new Date()
+  async insertIgnoreSiteTags (sitieId, tagIds) {
+    const siteTags = []
+    tagIds.forEach(id => {
+      siteTags.push({
+        site_id: sitieId,
+        tag_id: id
       })
+    })
 
     await knex('site_tags')
+      .insert(siteTags)
+      .onConflict('site_id', 'tag_id')
+      .ignore()
+  },
+
+  async restoreOrSoftDeleteSiteTags (siteId, tagIds) {
+    await knex('site_tags')
       .leftJoin('tags', 'tags.id', 'site_tags.tag_id')
-      .whereIn('tags.name', names)
+      .where('site_tags.site_id', siteId)
       .update({
-        'site_tags.deleted_at': null
+        'site_tags.deleted_at': raw(`(CASE WHEN site_tags.tag_id IN (${tagIds}) THEN NULL ELSE '${moment().format('YYYY-MM-DD HH:mm:ss')}' END)`)
       })
   }
 }
